@@ -7,8 +7,10 @@ from auth import (
     hash_password,
     verify_password,
     authenticate_customer,
+    authenticate_admin,
     validate_email,
     validate_phone,
+    validate_password_strength,
 )
 from database import customer_add_data
 
@@ -118,3 +120,52 @@ class TestAuthenticateCustomer:
             "Test User2", hash_password("correct"), "auth2@test.com", "NY", "1234567890"
         )
         assert authenticate_customer("auth2@test.com", "wrong") is False
+
+
+# ---------------------------------------------------------------------------
+# Password strength validator
+# ---------------------------------------------------------------------------
+
+class TestValidatePassword:
+    def test_strong_password(self):
+        is_strong, errors = validate_password_strength("Strong1")
+        assert is_strong is True
+        assert len(errors) == 0
+
+    def test_too_short(self):
+        is_strong, errors = validate_password_strength("St1")
+        assert is_strong is False
+        assert any("6 characters" in err for err in errors)
+
+    def test_missing_uppercase(self):
+        is_strong, errors = validate_password_strength("weakpassword1")
+        assert is_strong is False
+        assert any("uppercase letter" in err for err in errors)
+
+    def test_missing_lowercase(self):
+        is_strong, errors = validate_password_strength("WEAKPASSWORD1")
+        assert is_strong is False
+        assert any("lowercase letter" in err for err in errors)
+
+    def test_missing_digit(self):
+        is_strong, errors = validate_password_strength("WeakPassword")
+        assert is_strong is False
+        assert any("digit" in err for err in errors)
+
+
+# ---------------------------------------------------------------------------
+# Admin authentication
+# ---------------------------------------------------------------------------
+
+class TestAuthenticateAdmin:
+    def test_empty_credentials(self):
+        assert authenticate_admin("", "") is False
+
+    def test_wrong_credentials(self):
+        assert authenticate_admin("not_admin", "not_pass") is False
+
+    def test_valid_credentials(self):
+        # Uses default fallback from auth.py environment configuration if not custom set
+        from auth import ADMIN_USERNAME, ADMIN_PASSWORD
+        assert authenticate_admin(ADMIN_USERNAME, ADMIN_PASSWORD) is True
+

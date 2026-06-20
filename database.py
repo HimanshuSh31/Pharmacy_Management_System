@@ -15,6 +15,7 @@ Round-2 improvements:
 
 import sqlite3
 import logging
+import threading
 from typing import List, Optional, Tuple
 
 # Streamlit is only available when the app is running under `streamlit run`.
@@ -42,16 +43,21 @@ LOW_STOCK_THRESHOLD: int = 10   # drugs at or below this qty trigger an alert
 # Connection
 # ---------------------------------------------------------------------------
 
-@_cache
+_local = threading.local()
+
+
 def get_connection() -> sqlite3.Connection:
     """
-    Return a cached SQLite connection for the lifetime of the app.
-    Foreign-key enforcement is enabled on every connection.
+    Return a thread-local SQLite connection.
+    Foreign-key enforcement is enabled and WAL mode is set on every connection.
     """
-    conn = sqlite3.connect("drug_data.db", check_same_thread=False)
-    conn.execute("PRAGMA foreign_keys = ON")
-    logger.info("Database connection established.")
-    return conn
+    if not hasattr(_local, "conn") or _local.conn is None:
+        conn = sqlite3.connect("drug_data.db", check_same_thread=False)
+        conn.execute("PRAGMA foreign_keys = ON")
+        conn.execute("PRAGMA journal_mode = WAL")
+        _local.conn = conn
+        logger.info("Thread-local database connection established in WAL mode.")
+    return _local.conn
 
 
 # ---------------------------------------------------------------------------
@@ -91,7 +97,8 @@ def create_all_tables() -> None:
         CREATE TABLE IF NOT EXISTS Orders (
             O_id        VARCHAR(100) PRIMARY KEY NOT NULL,
             O_Name      VARCHAR(100) NOT NULL,
-            O_Timestamp TEXT         NOT NULL DEFAULT (datetime(\'now\'))
+            O_Timestamp TEXT         NOT NULL DEFAULT (datetime(\'now\')),
+            C_Email     VARCHAR(50)  NOT NULL REFERENCES Customers(C_Email)
         )
     ''')
 
@@ -103,7 +110,8 @@ def create_all_tables() -> None:
             D_name     VARCHAR(50)  NOT NULL,
             quantity   INT          NOT NULL CHECK(quantity > 0),
             unit_price REAL         NOT NULL DEFAULT 0.0,
-            FOREIGN KEY (O_id) REFERENCES Orders(O_id) ON DELETE CASCADE
+            FOREIGN KEY (O_id) REFERENCES Orders(O_id) ON DELETE CASCADE,
+            FOREIGN KEY (D_id) REFERENCES Drugs(D_id)
         )
     ''')
 
@@ -144,6 +152,27 @@ def _run_migrations(conn: sqlite3.Connection) -> None:
             "ALTER TABLE Orders ADD COLUMN O_Timestamp TEXT DEFAULT ''"
         )
         logger.info("Migration: added O_Timestamp to Orders")
+
+    if "C_Email" not in order_cols:
+        # SQLite ADD COLUMN supports foreign key references
+        conn.execute(
+            "ALTER TABLE Orders ADD COLUMN C_Email VARCHAR(50) DEFAULT NULL REFERENCES Customers(C_Email)"
+        )
+        # Attempt to backpopulate C_Email from Customers
+        conn.execute("""
+            UPDATE Orders
+            SET C_Email = (
+                SELECT C_Email FROM Customers WHERE Customers.C_Name = Orders.O_Name LIMIT 1
+            )
+            WHERE C_Email IS NULL
+        """)
+        # If O_Name already holds an email format, copy it
+        conn.execute("""
+            UPDATE Orders
+            SET C_Email = O_Name
+            WHERE C_Email IS NULL AND O_Name LIKE '%@%'
+        """)
+        logger.info("Migration: added C_Email to Orders and backpopulated values")
 
     conn.commit()
 
@@ -219,21 +248,25 @@ def customer_update(email: str, number: str) -> bool:
         return False
 
 
-def customer_delete(email: str) -> bool:
-    """Delete customer by email. Returns False when email not found."""
+def customer_delete(email: str) -> Tuple[bool, str]:
+    """Delete customer by email. Returns (success, message)."""
     conn = get_connection()
     try:
         cur = conn.execute('DELETE FROM Customers WHERE C_Email = ?', (email,))
         if cur.rowcount == 0:
             logger.warning("customer_delete: no customer with email=%s", email)
-            return False
+            return False, "Customer not found."
         conn.commit()
         logger.info("Customer deleted: %s", email)
-        return True
+        return True, "Customer deleted successfully."
+    except sqlite3.IntegrityError as exc:
+        conn.rollback()
+        logger.warning("customer_delete integrity violation: %s", exc)
+        return False, "Cannot delete customer because they have active orders linked to their account."
     except Exception as exc:
         conn.rollback()
         logger.error("customer_delete failed: %s", exc)
-        return False
+        return False, f"Database error: {str(exc)}"
 
 
 # ---------------------------------------------------------------------------
@@ -342,20 +375,47 @@ def drug_decrement_qty(drug_id: str, amount: int) -> bool:
         return False
 
 
-def drug_delete(drug_id: str) -> bool:
-    """Delete drug by ID. Returns False when drug ID not found."""
+def drug_delete(drug_id: str) -> Tuple[bool, str]:
+    """Delete drug by ID. Returns (success, message)."""
     conn = get_connection()
     try:
         cur = conn.execute('DELETE FROM Drugs WHERE D_id = ?', (drug_id,))
         if cur.rowcount == 0:
             logger.warning("drug_delete: no drug with id=%s", drug_id)
-            return False
+            return False, "Drug not found."
         conn.commit()
         logger.info("Drug deleted: %s", drug_id)
-        return True
+        return True, "Drug deleted successfully."
+    except sqlite3.IntegrityError as exc:
+        conn.rollback()
+        logger.warning("drug_delete integrity violation: %s", exc)
+        return False, "Cannot delete drug because it is present in existing customer orders. Consider setting its stock to 0 instead."
     except Exception as exc:
         conn.rollback()
         logger.error("drug_delete failed: %s", exc)
+        return False, f"Database error: {str(exc)}"
+
+
+def drug_update_details(drug_id: str, use: str, price: float, add_qty: int) -> bool:
+    """
+    Update drug details (use, price, and add quantity to stock) atomically.
+    Returns True on success, False if drug not found or error.
+    """
+    conn = get_connection()
+    try:
+        cur = conn.execute(
+            'UPDATE Drugs SET D_Use = ?, D_Price = ?, D_Qty = D_Qty + ? WHERE D_id = ?',
+            (use, price, add_qty, drug_id)
+        )
+        if cur.rowcount == 0:
+            logger.warning("drug_update_details: no drug with id=%s", drug_id)
+            return False
+        conn.commit()
+        logger.info("Drug updated: %s (added %d stock)", drug_id, add_qty)
+        return True
+    except Exception as exc:
+        conn.rollback()
+        logger.error("drug_update_details failed: %s", exc)
         return False
 
 
@@ -363,13 +423,14 @@ def drug_delete(drug_id: str) -> bool:
 # Order CRUD — normalised (OrderItems join table)
 # ---------------------------------------------------------------------------
 
-def order_place(customer_name: str, order_id: str,
+def order_place(customer_email: str, order_id: str,
                 items: List[dict]) -> bool:
     """
     Place an order atomically in a single transaction:
-      1. INSERT order header into Orders
-      2. INSERT each item into OrderItems
-      3. Decrement D_Qty for each drug (fails if stock is insufficient)
+      1. Retrieve customer name matching customer_email
+      2. INSERT order header into Orders (including C_Email and O_Name)
+      3. INSERT each item into OrderItems
+      4. Decrement D_Qty for each drug (fails if stock is insufficient)
 
     If any step fails the entire transaction is rolled back — no partial data.
 
@@ -380,10 +441,18 @@ def order_place(customer_name: str, order_id: str,
     """
     conn = get_connection()
     try:
+        # Resolve customer name by email
+        c = conn.cursor()
+        c.execute("SELECT C_Name FROM Customers WHERE C_Email = ?", (customer_email,))
+        row = c.fetchone()
+        if not row:
+            raise ValueError(f"Customer email '{customer_email}' does not exist.")
+        customer_name = row[0]
+
         conn.execute(
-            "INSERT INTO Orders (O_id, O_Name, O_Timestamp) "
-            "VALUES (?, ?, datetime('now'))",
-            (order_id, customer_name)
+            "INSERT INTO Orders (O_id, O_Name, O_Timestamp, C_Email) "
+            "VALUES (?, ?, datetime('now'), ?)",
+            (order_id, customer_name, customer_email)
         )
         for item in items:
             conn.execute(
@@ -404,7 +473,7 @@ def order_place(customer_name: str, order_id: str,
                     f"Insufficient stock for drug '{item['drug_id']}'"
                 )
         conn.commit()
-        logger.info("Order placed: %s by %s", order_id, customer_name)
+        logger.info("Order placed: %s by %s (%s)", order_id, customer_name, customer_email)
         return True
     except Exception as exc:
         conn.rollback()
@@ -412,9 +481,9 @@ def order_place(customer_name: str, order_id: str,
         return False
 
 
-def order_view_data(customer_name: str) -> List[Tuple]:
+def order_view_data(customer_email: str) -> List[Tuple]:
     """
-    Return order rows for a customer, newest first.
+    Return order rows for a customer email, newest first.
     Columns: (O_id, O_Timestamp, D_name, quantity, unit_price)
     """
     c = get_connection().cursor()
@@ -422,9 +491,9 @@ def order_view_data(customer_name: str) -> List[Tuple]:
         SELECT o.O_id, o.O_Timestamp, oi.D_name, oi.quantity, oi.unit_price
           FROM Orders  o
           JOIN OrderItems oi ON o.O_id = oi.O_id
-         WHERE o.O_Name = ?
+         WHERE o.C_Email = ?
          ORDER BY o.O_Timestamp DESC
-    ''', (customer_name,))
+    ''', (customer_email,))
     return c.fetchall()
 
 

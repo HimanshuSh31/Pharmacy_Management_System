@@ -21,6 +21,7 @@ from database import (
     drug_add_data, drug_view_all_data,
     drug_update, drug_update_price, drug_delete,
     drug_decrement_qty, drug_get_low_stock,
+    drug_update_details,
     LOW_STOCK_THRESHOLD,
     # Orders
     order_place, order_view_data, order_view_all_data, order_delete,
@@ -91,11 +92,13 @@ class TestCustomerCRUD:
         assert customer_update("ghost@test.com", "000") is False
 
     def test_delete_customer(self, alice):
-        assert customer_delete("alice@test.com") is True
-        assert customer_get_by_email("alice@test.com") is None
+        success, msg = customer_delete(alice)
+        assert success is True
+        assert customer_get_by_email(alice) is None
 
     def test_delete_nonexistent_returns_false(self):
-        assert customer_delete("ghost@test.com") is False
+        success, msg = customer_delete("ghost@test.com")
+        assert success is False
 
 
 # ---------------------------------------------------------------------------
@@ -135,12 +138,14 @@ class TestDrugCRUD:
         assert drug_update_price("#MISSING", 5.0) is False
 
     def test_delete_drug(self, drug_aspirin):
-        assert drug_delete("#ASP") is True
+        success, msg = drug_delete(drug_aspirin)
+        assert success is True
         drugs = {d[4]: d for d in drug_view_all_data()}
-        assert "#ASP" not in drugs
+        assert drug_aspirin not in drugs
 
     def test_delete_nonexistent_returns_false(self):
-        assert drug_delete("#GHOST") is False
+        success, msg = drug_delete("#GHOST")
+        assert success is False
 
     def test_decrement_qty(self, drug_aspirin):
         assert drug_decrement_qty("#ASP", 20) is True
@@ -175,24 +180,24 @@ class TestDrugCRUD:
 # ---------------------------------------------------------------------------
 
 class TestOrderPlacement:
-    def test_place_order_succeeds(self, drug_aspirin):
-        assert order_place("alice", "ORD-001", [
+    def test_place_order_succeeds(self, alice, drug_aspirin):
+        assert order_place(alice, "ORD-001", [
             {"drug_id": "#ASP", "drug_name": "Aspirin", "quantity": 5, "unit_price": 5.0}
         ]) is True
 
-    def test_place_order_decrements_stock(self, drug_aspirin):
-        order_place("alice", "ORD-002", [
+    def test_place_order_decrements_stock(self, alice, drug_aspirin):
+        order_place(alice, "ORD-002", [
             {"drug_id": "#ASP", "drug_name": "Aspirin", "quantity": 10, "unit_price": 5.0}
         ])
         drugs = {d[4]: d for d in drug_view_all_data()}
         assert drugs["#ASP"][3] == 90  # 100 - 10
 
-    def test_place_order_insufficient_stock_returns_false(self, drug_aspirin):
-        assert order_place("alice", "ORD-003", [
+    def test_place_order_insufficient_stock_returns_false(self, alice, drug_aspirin):
+        assert order_place(alice, "ORD-003", [
             {"drug_id": "#ASP", "drug_name": "Aspirin", "quantity": 999, "unit_price": 5.0}
         ]) is False
 
-    def test_place_order_full_rollback_on_failure(self, drug_aspirin, drug_ibuprofen):
+    def test_place_order_full_rollback_on_failure(self, alice, drug_aspirin, drug_ibuprofen):
         """
         If any item in the order fails (e.g. missing drug), the entire
         transaction must roll back — no stock should be decremented.
@@ -200,7 +205,7 @@ class TestOrderPlacement:
         asp_before = [d for d in drug_view_all_data() if d[4] == "#ASP"][0][3]
         ibu_before = [d for d in drug_view_all_data() if d[4] == "#IBU"][0][3]
 
-        result = order_place("alice", "ORD-004", [
+        result = order_place(alice, "ORD-004", [
             {"drug_id": "#ASP",     "drug_name": "Aspirin",   "quantity": 5,  "unit_price": 5.0},
             {"drug_id": "#MISSING", "drug_name": "GhostDrug", "quantity": 1,  "unit_price": 0.0},
         ])
@@ -212,8 +217,8 @@ class TestOrderPlacement:
         assert asp_after == asp_before, "Aspirin stock must not change after rollback"
         assert ibu_after == ibu_before, "Ibuprofen stock must not change after rollback"
 
-    def test_place_multi_item_order(self, drug_aspirin, drug_ibuprofen):
-        assert order_place("alice", "ORD-005", [
+    def test_place_multi_item_order(self, alice, drug_aspirin, drug_ibuprofen):
+        assert order_place(alice, "ORD-005", [
             {"drug_id": "#ASP", "drug_name": "Aspirin",   "quantity": 3, "unit_price": 5.0},
             {"drug_id": "#IBU", "drug_name": "Ibuprofen", "quantity": 2, "unit_price": 8.0},
         ]) is True
@@ -221,39 +226,42 @@ class TestOrderPlacement:
         assert drugs["#ASP"][3] == 97   # 100 - 3
         assert drugs["#IBU"][3] == 48   # 50  - 2
 
-    def test_duplicate_order_id_returns_false(self, drug_aspirin):
-        order_place("alice", "ORD-006", [
+    def test_duplicate_order_id_returns_false(self, alice, drug_aspirin):
+        order_place(alice, "ORD-006", [
             {"drug_id": "#ASP", "drug_name": "Aspirin", "quantity": 1, "unit_price": 5.0}
         ])
-        assert order_place("alice", "ORD-006", [
+        assert order_place(alice, "ORD-006", [
             {"drug_id": "#ASP", "drug_name": "Aspirin", "quantity": 1, "unit_price": 5.0}
         ]) is False
 
 
 class TestOrderViews:
     def test_view_customer_orders(self, drug_aspirin):
-        order_place("bob", "ORD-BOB-1", [
+        customer_add_data("Bob", "hash", "bob@test.com", "State", "111")
+        order_place("bob@test.com", "ORD-BOB-1", [
             {"drug_id": "#ASP", "drug_name": "Aspirin", "quantity": 2, "unit_price": 5.0}
         ])
-        rows = order_view_data("bob")
+        rows = order_view_data("bob@test.com")
         assert len(rows) == 1
         assert rows[0][2] == "Aspirin"
 
-    def test_view_only_own_orders(self, drug_aspirin):
-        order_place("alice", "ORD-A1", [
+    def test_view_only_own_orders(self, alice, drug_aspirin):
+        customer_add_data("Charlie", "hash", "charlie@test.com", "State", "222")
+        order_place(alice, "ORD-A1", [
             {"drug_id": "#ASP", "drug_name": "Aspirin", "quantity": 1, "unit_price": 5.0}
         ])
-        order_place("charlie", "ORD-C1", [
+        order_place("charlie@test.com", "ORD-C1", [
             {"drug_id": "#ASP", "drug_name": "Aspirin", "quantity": 1, "unit_price": 5.0}
         ])
-        alice_rows = order_view_data("alice")
+        alice_rows = order_view_data(alice)
         assert all(row[0].startswith("ORD-A") for row in alice_rows)
 
-    def test_view_all_orders(self, drug_aspirin, drug_ibuprofen):
-        order_place("alice", "ORD-ALL-1", [
+    def test_view_all_orders(self, alice, drug_aspirin, drug_ibuprofen):
+        customer_add_data("Bob", "hash", "bob@test.com", "State", "111")
+        order_place(alice, "ORD-ALL-1", [
             {"drug_id": "#ASP", "drug_name": "Aspirin", "quantity": 1, "unit_price": 5.0}
         ])
-        order_place("bob", "ORD-ALL-2", [
+        order_place("bob@test.com", "ORD-ALL-2", [
             {"drug_id": "#IBU", "drug_name": "Ibuprofen", "quantity": 2, "unit_price": 8.0}
         ])
         rows = order_view_all_data()
@@ -263,8 +271,8 @@ class TestOrderViews:
 
 
 class TestOrderDelete:
-    def test_delete_order(self, drug_aspirin):
-        order_place("alice", "ORD-DEL-1", [
+    def test_delete_order(self, alice, drug_aspirin):
+        order_place(alice, "ORD-DEL-1", [
             {"drug_id": "#ASP", "drug_name": "Aspirin", "quantity": 1, "unit_price": 5.0}
         ])
         assert order_delete("ORD-DEL-1") is True
@@ -275,11 +283,38 @@ class TestOrderDelete:
     def test_delete_nonexistent_order_returns_false(self):
         assert order_delete("ORD-GHOST") is False
 
-    def test_delete_cascades_to_items(self, drug_aspirin):
+    def test_delete_cascades_to_items(self, alice, drug_aspirin):
         """Deleting an order must also remove its OrderItems (CASCADE)."""
-        order_place("alice", "ORD-CASCADE", [
+        order_place(alice, "ORD-CASCADE", [
             {"drug_id": "#ASP", "drug_name": "Aspirin", "quantity": 1, "unit_price": 5.0}
         ])
         order_delete("ORD-CASCADE")
         rows = order_view_all_data()
         assert all(r[0] != "ORD-CASCADE" for r in rows)
+
+
+class TestDatabaseImprovements:
+    def test_drug_update_details(self, drug_aspirin):
+        assert drug_update_details(drug_aspirin, "New usage", 12.0, 50) is True
+        drugs = {d[4]: d for d in drug_view_all_data()}
+        # Columns: (Name, ExpDate, Use, Qty, id, Price, Image)
+        assert drugs[drug_aspirin][2] == "New usage"
+        assert drugs[drug_aspirin][3] == 150  # 100 + 50
+        assert drugs[drug_aspirin][5] == 12.0
+
+    def test_drug_delete_constraint_failure(self, alice, drug_aspirin):
+        order_place(alice, "ORD-CONSTRAINT-D", [
+            {"drug_id": drug_aspirin, "drug_name": "Aspirin", "quantity": 1, "unit_price": 5.0}
+        ])
+        success, msg = drug_delete(drug_aspirin)
+        assert success is False
+        assert "Cannot delete drug" in msg
+
+    def test_customer_delete_constraint_failure(self, alice, drug_aspirin):
+        order_place(alice, "ORD-CONSTRAINT-C", [
+            {"drug_id": drug_aspirin, "drug_name": "Aspirin", "quantity": 1, "unit_price": 5.0}
+        ])
+        success, msg = customer_delete(alice)
+        assert success is False
+        assert "Cannot delete customer" in msg
+

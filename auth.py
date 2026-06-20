@@ -12,10 +12,11 @@ Round-2: Optional[str] type hint for Python 3.7+ compatibility.
 """
 
 import hashlib
+import hmac
 import os
 import re
 import logging
-from typing import Optional
+from typing import Optional, Tuple, List
 
 from database import customer_get_password_hash
 
@@ -86,11 +87,12 @@ def authenticate_customer(email: str, password: str) -> bool:
 
 def authenticate_admin(username: str, password: str) -> bool:
     """Return True if the supplied credentials match the configured admin account."""
-    return (
-        bool(username) and bool(password)
-        and username == ADMIN_USERNAME
-        and password == ADMIN_PASSWORD
-    )
+    if not username or not password:
+        return False
+    # Use hmac.compare_digest to prevent timing attacks
+    user_ok = hmac.compare_digest(username.encode(), ADMIN_USERNAME.encode())
+    pass_ok = hmac.compare_digest(password.encode(), ADMIN_PASSWORD.encode())
+    return user_ok and pass_ok
 
 
 # ---------------------------------------------------------------------------
@@ -109,3 +111,20 @@ def validate_email(email: str) -> bool:
 def validate_phone(phone: str) -> bool:
     """Return True if *phone* looks like a valid phone number (7-15 digits)."""
     return bool(_PHONE_RE.match(phone.strip()))
+
+
+def validate_password_strength(password: str) -> Tuple[bool, List[str]]:
+    """
+    Validate password strength.
+    Returns (is_strong, list of error messages).
+    """
+    errors = []
+    if len(password) < 6:
+        errors.append("Password must be at least 6 characters long.")
+    if not any(c.isupper() for c in password):
+        errors.append("Password must contain at least one uppercase letter.")
+    if not any(c.islower() for c in password):
+        errors.append("Password must contain at least one lowercase letter.")
+    if not any(c.isdigit() for c in password):
+        errors.append("Password must contain at least one digit.")
+    return len(errors) == 0, errors

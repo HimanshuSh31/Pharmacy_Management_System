@@ -16,6 +16,7 @@ from auth import (
     hash_password,
     validate_email,
     validate_phone,
+    validate_password_strength,
 )
 from admin_ui import show_admin_dashboard
 from customer_ui import show_customer_dashboard
@@ -51,6 +52,7 @@ def _init_session() -> None:
         "logged_in": False,
         "user_type": None,      # "customer" | "admin"
         "username":  None,
+        "email":     None,      # Unique key for database operations
         "tables_ok": False,     # guard so create_all_tables runs only once
     }
     for key, value in defaults.items():
@@ -62,6 +64,7 @@ def _logout() -> None:
     st.session_state.logged_in = False
     st.session_state.user_type = None
     st.session_state.username  = None
+    st.session_state.email     = None
 
 
 # ---------------------------------------------------------------------------
@@ -82,6 +85,7 @@ def _show_login() -> None:
             st.session_state.logged_in = True
             st.session_state.user_type = "customer"
             st.session_state.username  = customer[0] if customer else email
+            st.session_state.email     = email.strip()
             logger.info("Customer logged in: %s", email)
             st.rerun()
         else:
@@ -114,8 +118,11 @@ def _show_signup() -> None:
             errors.append("Please enter a valid email address.")
         if not validate_phone(cust_number):
             errors.append("Please enter a valid phone number (7–15 digits).")
-        if len(cust_pass) < 6:
-            errors.append("Password must be at least 6 characters long.")
+        
+        is_strong, pw_errors = validate_password_strength(cust_pass)
+        if not is_strong:
+            errors.extend(pw_errors)
+            
         if cust_pass != cust_pass2:
             errors.append("Passwords do not match.")
 
@@ -176,7 +183,7 @@ def main() -> None:
         if st.session_state.user_type == "admin":
             show_admin_dashboard()
         elif st.session_state.user_type == "customer":
-            show_customer_dashboard(st.session_state.username)
+            show_customer_dashboard(st.session_state.username, st.session_state.email)
         return
 
     # ---- Guest state -----------------------------------------------------------

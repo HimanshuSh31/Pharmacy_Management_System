@@ -48,23 +48,23 @@ def _load_drug_image(filename: Optional[str]):
 # Entry point
 # ---------------------------------------------------------------------------
 
-def show_customer_dashboard(username: str) -> None:
+def show_customer_dashboard(username: str, email: str) -> None:
     st.title("💊 Welcome to Pharmacy Store")
     st.markdown(f"Hello, **{username}**! 👋")
     st.divider()
 
-    _show_order_history(username)
+    _show_order_history(email)
     st.divider()
-    _show_drug_catalog(username)
+    _show_drug_catalog(username, email)
 
 
 # ---------------------------------------------------------------------------
 # Order history
 # ---------------------------------------------------------------------------
 
-def _show_order_history(username: str) -> None:
+def _show_order_history(email: str) -> None:
     st.subheader("📦 Your Order History")
-    rows = order_view_data(username)
+    rows = order_view_data(email)
 
     with st.expander("View past orders"):
         if not rows:
@@ -93,7 +93,7 @@ def _show_order_history(username: str) -> None:
 # Drug catalogue — dynamic loop, prices shown, uuid4 order IDs
 # ---------------------------------------------------------------------------
 
-def _show_drug_catalog(username: str) -> None:
+def _show_drug_catalog(username: str, email: str) -> None:
     st.subheader("🛒 Available Medicines")
 
     drugs = drug_view_all_data()
@@ -129,18 +129,22 @@ def _show_drug_catalog(username: str) -> None:
 
                 st.info(f"📌 **When to use:** {d_use}")
 
-                try:
-                    max_qty = min(int(d_qty), 10)
-                except (ValueError, TypeError):
-                    max_qty = 5
+                if d_qty <= 0:
+                    st.error("❌ Out of stock")
+                    quantities[d_id] = 0
+                else:
+                    try:
+                        max_qty = min(int(d_qty), 10)
+                    except (ValueError, TypeError):
+                        max_qty = 5
 
-                quantities[d_id] = st.slider(
-                    "Quantity",
-                    min_value=0,
-                    max_value=max(max_qty, 1),
-                    value=0,
-                    key=f"qty_{d_id}_{i}",
-                )
+                    quantities[d_id] = st.slider(
+                        "Quantity",
+                        min_value=0,
+                        max_value=max_qty,
+                        value=0,
+                        key=f"qty_{d_id}_{i}",
+                    )
 
         st.divider()
 
@@ -163,7 +167,7 @@ def _show_drug_catalog(username: str) -> None:
             st.warning("Please select at least one medicine before ordering.")
             return
 
-        order_id = f"{username}#{uuid.uuid4().hex[:8].upper()}"
+        order_id = f"{username.replace(' ', '')}#{uuid.uuid4().hex[:8].upper()}"
         items = [
             {
                 "drug_id":    drug[4],
@@ -174,7 +178,7 @@ def _show_drug_catalog(username: str) -> None:
             for drug in selected_drugs
         ]
 
-        success = order_place(username, order_id, items)
+        success = order_place(email, order_id, items)
         if success:
             grand_total = sum(
                 it["quantity"] * it["unit_price"] for it in items
@@ -185,6 +189,7 @@ def _show_drug_catalog(username: str) -> None:
                 f"**Total: ₹ {grand_total:.2f}**"
             )
             st.balloons()
+            st.rerun()
         else:
             st.error(
                 "❌ Order failed — one or more items may be out of stock. "
