@@ -1,30 +1,25 @@
 """
-main.py — Entry point for the Pharmacy Management System.
+main.py — Entry point: routing, session state, and authentication screens.
 
-Round-2: create_all_tables() is guarded with st.session_state so it only
-runs once per session, not on every Streamlit rerun.
+UI: Beautiful centered auth card with tabs for Login / Sign Up / Admin.
 """
 
 import logging
-
 import streamlit as st
 
-from database import create_all_tables, customer_add_data, customer_get_by_email
+from database import create_all_tables, customer_get_by_email
 from auth import (
-    authenticate_customer,
-    authenticate_admin,
-    hash_password,
-    validate_email,
-    validate_phone,
-    validate_password_strength,
+    authenticate_customer, authenticate_admin,
+    hash_password, validate_email, validate_phone,
 )
+from database import customer_add_data
 from admin_ui import show_admin_dashboard
 from customer_ui import show_customer_dashboard
+from styles import inject_css, sidebar_logo
 
 # ---------------------------------------------------------------------------
-# Logging — replaces all bare print() calls
+# Logging
 # ---------------------------------------------------------------------------
-
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s  %(levelname)-8s  %(name)s: %(message)s",
@@ -32,134 +27,152 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
-# Page setup
+# Page config
 # ---------------------------------------------------------------------------
-
 st.set_page_config(
-    page_title="Pharmacy Management System",
+    page_title="PharmaSystem",
     page_icon="💊",
     layout="wide",
+    initial_sidebar_state="expanded",
 )
 
-
 # ---------------------------------------------------------------------------
-# Session state helpers
+# Session state
 # ---------------------------------------------------------------------------
 
 def _init_session() -> None:
-    """Initialise session state keys on first run."""
     defaults = {
         "logged_in": False,
         "user_type": None,      # "customer" | "admin"
         "username":  None,
-        "email":     None,      # Unique key for database operations
-        "tables_ok": False,     # guard so create_all_tables runs only once
+        "email":     None,
+        "tables_ok": False,
     }
-    for key, value in defaults.items():
-        if key not in st.session_state:
-            st.session_state[key] = value
+    for k, v in defaults.items():
+        if k not in st.session_state:
+            st.session_state[k] = v
 
 
 def _logout() -> None:
+    for k in ("logged_in", "user_type", "username", "email"):
+        st.session_state[k] = None
     st.session_state.logged_in = False
-    st.session_state.user_type = None
-    st.session_state.username  = None
-    st.session_state.email     = None
 
 
 # ---------------------------------------------------------------------------
-# Login form
+# Auth screens
 # ---------------------------------------------------------------------------
 
-def _show_login() -> None:
-    st.sidebar.subheader("Customer Login")
-    email    = st.sidebar.text_input("Email",    key="login_email")
-    password = st.sidebar.text_input("Password", type="password", key="login_password")
+def _auth_page() -> None:
+    inject_css()
 
-    if st.sidebar.button("Login", key="btn_login"):
-        if not email or not password:
-            st.sidebar.warning("Please enter both email and password.")
-            return
-        if authenticate_customer(email.strip(), password):
-            customer = customer_get_by_email(email.strip())
-            st.session_state.logged_in = True
-            st.session_state.user_type = "customer"
-            st.session_state.username  = customer[0] if customer else email
-            st.session_state.email     = email.strip()
-            logger.info("Customer logged in: %s", email)
-            st.rerun()
-        else:
-            st.sidebar.error("❌ Invalid email or password.")
+    # Centered narrow column
+    _, mid, _ = st.columns([1, 1.6, 1])
+    with mid:
+        # ── Logo / branding ─────────────────────────────────────────────
+        st.markdown("""
+        <div style="text-align:center; padding:2rem 0 1.5rem;">
+            <div style="font-size:3.5rem; margin-bottom:0.5rem;">💊</div>
+            <h1 style="font-size:1.85rem; font-weight:800; color:#1E293B;
+                       margin:0; letter-spacing:-0.02em;">PharmaSystem</h1>
+            <p style="font-size:0.875rem; color:#64748B; margin:0.3rem 0 0;">
+                Your trusted pharmacy management platform
+            </p>
+        </div>
+        """, unsafe_allow_html=True)
 
-
-# ---------------------------------------------------------------------------
-# Sign-up form
-# ---------------------------------------------------------------------------
-
-def _show_signup() -> None:
-    st.subheader("📝 Create a New Account")
-
-    col1, col2 = st.columns(2)
-    with col1:
-        cust_name  = st.text_input("Full Name")
-        cust_email = st.text_input("Email Address")
-        cust_state = st.text_input("State")
-    with col2:
-        cust_number = st.text_input("Phone Number")
-        cust_pass   = st.text_input("Password",         type="password", key="su_pass")
-        cust_pass2  = st.text_input("Confirm Password", type="password", key="su_pass2")
-
-    if st.button("Create Account", type="primary"):
-        errors = []
-
-        if not cust_name.strip():
-            errors.append("Full name is required.")
-        if not validate_email(cust_email):
-            errors.append("Please enter a valid email address.")
-        if not validate_phone(cust_number):
-            errors.append("Please enter a valid phone number (7–15 digits).")
-        
-        is_strong, pw_errors = validate_password_strength(cust_pass)
-        if not is_strong:
-            errors.extend(pw_errors)
-            
-        if cust_pass != cust_pass2:
-            errors.append("Passwords do not match.")
-
-        if errors:
-            for err in errors:
-                st.warning(err)
-            return
-
-        hashed  = hash_password(cust_pass)
-        success = customer_add_data(
-            cust_name.strip(), hashed, cust_email.strip(),
-            cust_state.strip(), cust_number.strip()
+        tab_login, tab_signup, tab_admin = st.tabs(
+            ["🔑  Customer Login", "📝  Sign Up", "🛡️  Admin"]
         )
-        if success:
-            st.success("✅ Account created! Head to **Login** to sign in.")
-        else:
-            st.error("❌ An account with that email address already exists.")
 
+        # ── Customer Login ───────────────────────────────────────────────
+        with tab_login:
+            st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
+            with st.form("form_login"):
+                st.markdown("### Welcome back")
+                email    = st.text_input("Email address", placeholder="you@example.com")
+                password = st.text_input("Password", type="password", placeholder="••••••••")
+                submit   = st.form_submit_button("Login →", use_container_width=True)
 
-# ---------------------------------------------------------------------------
-# Admin login
-# ---------------------------------------------------------------------------
+            if submit:
+                if not email or not password:
+                    st.warning("Please enter your email and password.")
+                elif authenticate_customer(email.strip(), password):
+                    customer = customer_get_by_email(email.strip())
+                    st.session_state.logged_in = True
+                    st.session_state.user_type = "customer"
+                    st.session_state.username  = customer[0] if customer else email
+                    st.session_state.email     = email.strip()
+                    logger.info("Customer login: %s", email)
+                    st.rerun()
+                else:
+                    st.error("❌ Invalid email or password.")
 
-def _show_admin_login() -> None:
-    st.sidebar.subheader("Admin Login")
-    username = st.sidebar.text_input("Admin Username", key="admin_user")
-    password = st.sidebar.text_input("Admin Password", type="password", key="admin_pass")
+        # ── Sign Up ──────────────────────────────────────────────────────
+        with tab_signup:
+            st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
+            with st.form("form_signup"):
+                st.markdown("### Create your account")
+                col_a, col_b = st.columns(2)
+                with col_a:
+                    su_name  = st.text_input("Full name",     placeholder="Jane Smith")
+                    su_email = st.text_input("Email address", placeholder="jane@example.com")
+                    su_state = st.text_input("State",         placeholder="Maharashtra")
+                with col_b:
+                    su_phone  = st.text_input("Phone number",     placeholder="+91 98765 43210")
+                    su_pass   = st.text_input("Password",         type="password", placeholder="Min 6 chars")
+                    su_pass2  = st.text_input("Confirm password", type="password", placeholder="Repeat password")
+                create = st.form_submit_button("Create Account →", use_container_width=True)
 
-    if st.sidebar.button("Login as Admin", key="btn_admin_login"):
-        if authenticate_admin(username, password):
-            st.session_state.logged_in = True
-            st.session_state.user_type = "admin"
-            st.session_state.username  = username
-            logger.info("Admin logged in.")
-            st.rerun()
-        else:
-            st.sidebar.error("❌ Invalid admin credentials.")
+            if create:
+                errs = []
+                if not su_name.strip():
+                    errs.append("Full name is required.")
+                if not validate_email(su_email):
+                    errs.append("Enter a valid email address.")
+                if not validate_phone(su_phone):
+                    errs.append("Enter a valid phone number (7–15 digits).")
+                if len(su_pass) < 6:
+                    errs.append("Password must be at least 6 characters.")
+                if su_pass != su_pass2:
+                    errs.append("Passwords do not match.")
+
+                if errs:
+                    for e in errs:
+                        st.warning(e)
+                elif customer_add_data(
+                    su_name.strip(), hash_password(su_pass),
+                    su_email.strip(), su_state.strip(), su_phone.strip()
+                ):
+                    st.success("✅ Account created! Switch to the **Login** tab to sign in.")
+                else:
+                    st.error("An account with that email already exists.")
+
+        # ── Admin Login ──────────────────────────────────────────────────
+        with tab_admin:
+            st.markdown("<div style='height:0.5rem'></div>", unsafe_allow_html=True)
+            with st.form("form_admin"):
+                st.markdown("### Admin access")
+                adm_user = st.text_input("Admin username", placeholder="admin")
+                adm_pass = st.text_input("Admin password", type="password", placeholder="••••••••")
+                adm_sub  = st.form_submit_button("Login as Admin →", use_container_width=True)
+
+            if adm_sub:
+                if authenticate_admin(adm_user, adm_pass):
+                    st.session_state.logged_in = True
+                    st.session_state.user_type = "admin"
+                    st.session_state.username  = adm_user
+                    logger.info("Admin login: %s", adm_user)
+                    st.rerun()
+                else:
+                    st.error("❌ Invalid admin credentials.")
+
+        # Footer
+        st.markdown("""
+        <p style="text-align:center; font-size:0.75rem; color:#94A3B8; margin-top:2rem;">
+            Made by Himanshu Sharma &nbsp;·&nbsp; Pharmacy Management System
+        </p>
+        """, unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------------------
@@ -169,32 +182,32 @@ def _show_admin_login() -> None:
 def main() -> None:
     _init_session()
 
-    # Guard: run table creation only once per session, not on every rerun
     if not st.session_state.tables_ok:
         create_all_tables()
         st.session_state.tables_ok = True
 
-    # ---- Logged-in state -------------------------------------------------------
     if st.session_state.logged_in:
-        if st.sidebar.button("🚪 Logout"):
+        inject_css()
+
+        if st.session_state.user_type == "admin":
+            sidebar_logo("Admin Portal")
+        else:
+            sidebar_logo("Customer Portal")
+
+        if st.sidebar.button("🚪  Logout", use_container_width=True):
             _logout()
             st.rerun()
 
         if st.session_state.user_type == "admin":
             show_admin_dashboard()
         elif st.session_state.user_type == "customer":
-            show_customer_dashboard(st.session_state.username, st.session_state.email)
+            show_customer_dashboard(
+                st.session_state.username,
+                st.session_state.email or st.session_state.username,
+            )
         return
 
-    # ---- Guest state -----------------------------------------------------------
-    choice = st.sidebar.selectbox("Menu", ["Login", "Sign Up", "Admin"])
-
-    if choice == "Login":
-        _show_login()
-    elif choice == "Sign Up":
-        _show_signup()
-    elif choice == "Admin":
-        _show_admin_login()
+    _auth_page()
 
 
 if __name__ == "__main__":
