@@ -2,7 +2,7 @@
 
 <div align="center">
 
-[![Live Demo](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://pharmacymanagementsystem-himanshush31.streamlit.app)
+[![Live Demo](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://pharmacymanagementsystem.streamlit.app/)
 &nbsp;
 [![CI](https://github.com/HimanshuSh31/Pharmacy_Management_System/actions/workflows/ci.yml/badge.svg)](https://github.com/HimanshuSh31/Pharmacy_Management_System/actions)
 &nbsp;
@@ -20,7 +20,7 @@
 
 A **full-featured, enterprise-grade** pharmacy management web application built with Python and Streamlit, backed by SQLite. Features separate Admin and Customer portals with secure authentication, real-time inventory tracking, order management, and bulk operations.
 
-[**▶ Open Live Demo**](https://pharmacymanagementsystem-himanshush31.streamlit.app) · [Report Bug](https://github.com/HimanshuSh31/Pharmacy_Management_System/issues) · [Request Feature](https://github.com/HimanshuSh31/Pharmacy_Management_System/issues)
+[**▶ Open Live Demo**](https://pharmacymanagementsystem.streamlit.app/) · [Report Bug](https://github.com/HimanshuSh31/Pharmacy_Management_System/issues) · [Request Feature](https://github.com/HimanshuSh31/Pharmacy_Management_System/issues)
 
 </div>
 
@@ -28,7 +28,7 @@ A **full-featured, enterprise-grade** pharmacy management web application built 
 
 ## 🚀 Live Demo
 
-> **[https://pharmacymanagementsystem-himanshush31.streamlit.app](https://pharmacymanagementsystem-himanshush31.streamlit.app)**
+> **[https://pharmacymanagementsystem.streamlit.app](https://pharmacymanagementsystem.streamlit.app/)**
 
 The demo is pre-loaded with **10 realistic drugs** across 6 categories, including deliberately low-stock items and a ready-made customer account so you can explore every feature immediately.
 
