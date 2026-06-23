@@ -154,13 +154,13 @@ def _medicine_catalog(username: str, email: str) -> None:
             with col:
                 if expired:
                     st.markdown(f"""
-                    <div style="background:#FEE2E2;border:2px solid #EF4444;border-radius:16px;
+                    <div style="background:rgba(239, 68, 68, 0.1);border:2px solid #EF4444;border-radius:16px;
                                 padding:1.25rem;margin-bottom:0.25rem;opacity:0.75;">
                         <div style="float:right;background:#EF4444;color:white;font-size:0.68rem;
                                     font-weight:700;padding:0.2rem 0.5rem;border-radius:20px;">EXPIRED</div>
-                        <div style="font-size:1rem;font-weight:700;color:#991B1B;margin-bottom:0.3rem;">
+                        <div style="font-size:1rem;font-weight:700;color:var(--text-color);margin-bottom:0.3rem;">
                             💊 {d_name}</div>
-                        <div style="font-size:0.78rem;color:#B91C1C;">Expired: {d_expiry}</div>
+                        <div style="font-size:0.78rem;color:#EF4444;">Expired: {d_expiry}</div>
                     </div>""", unsafe_allow_html=True)
                     quantities[d_id] = 0
                     continue
@@ -243,23 +243,23 @@ def _medicine_catalog(username: str, email: str) -> None:
                 st.rerun()
         else:
             grand_total = sum(float(d[5]) * quantities[d[4]] for d in selected_drugs)
-            st.markdown("""<div style="background:white;border:2px solid #2563EB;
+            st.markdown("""<div style="background:var(--secondary-background-color);border:2px solid #2563EB;
                             border-radius:16px;padding:1.5rem;margin-top:0.5rem;">
-                            <h4 style="margin:0 0 1rem;color:#1E293B;">📋 Order Summary</h4>""",
+                            <h4 style="margin:0 0 1rem;color:var(--text-color);">📋 Order Summary</h4>""",
                         unsafe_allow_html=True)
             for drug in selected_drugs:
                 qty  = quantities[drug[4]]
                 line = qty * float(drug[5])
                 st.markdown(
                     f"<div style='display:flex;justify-content:space-between;"
-                    f"font-size:0.875rem;color:#374151;padding:0.3rem 0;'>"
+                    f"font-size:0.875rem;color:var(--text-color);opacity:0.85;padding:0.3rem 0;'>"
                     f"<span>💊 {drug[0]} × {qty}</span>"
                     f"<span style='font-weight:600;'>₹ {line:.2f}</span></div>",
                     unsafe_allow_html=True)
             st.markdown(
-                f"<div style='border-top:2px solid #F1F5F9;margin-top:0.75rem;"
+                f"<div style='border-top:2px solid rgba(128, 128, 128, 0.15);margin-top:0.75rem;"
                 f"padding-top:0.75rem;display:flex;justify-content:space-between;"
-                f"font-size:1rem;font-weight:800;color:#1E293B;'>"
+                f"font-size:1rem;font-weight:800;color:var(--text-color);'>"
                 f"<span>Total</span><span>₹ {grand_total:,.2f}</span></div></div>",
                 unsafe_allow_html=True)
 

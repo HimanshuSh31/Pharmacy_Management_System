@@ -160,9 +160,9 @@ def _auth_page() -> None:
         st.markdown("""
         <div style="text-align:center; padding:2rem 0 1.5rem;">
             <div style="font-size:3.5rem; margin-bottom:0.5rem;">💊</div>
-            <h1 style="font-size:1.85rem; font-weight:800; color:#1E293B;
+            <h1 style="font-size:1.85rem; font-weight:800; color:var(--text-color);
                        margin:0; letter-spacing:-0.02em;">PharmaSystem</h1>
-            <p style="font-size:0.875rem; color:#64748B; margin:0.3rem 0 0;">
+            <p style="font-size:0.875rem; color:var(--text-color); opacity:0.7; margin:0.3rem 0 0;">
                 Your trusted pharmacy management platform
             </p>
         </div>

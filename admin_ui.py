@@ -342,8 +342,8 @@ def _drugs_section(action: str) -> None:
                            mime="text/csv")
 
         st.markdown("""
-        <div style="background:#F8FAFC;border:1px solid #E2E8F0;border-radius:10px;
-                    padding:0.9rem 1rem;font-size:0.8rem;color:#475569;margin:0.75rem 0;">
+        <div style="background:var(--background-color);border:1px solid rgba(128, 128, 128, 0.2);border-radius:10px;
+                    padding:0.9rem 1rem;font-size:0.8rem;color:var(--text-color);opacity:0.85;margin:0.75rem 0;">
             <strong>Required columns:</strong> id · name · expdate (YYYY-MM-DD) · use · qty · price<br>
             <strong>Optional columns:</strong> category · supplier · prescription (0/1) · image
         </div>
@@ -491,31 +491,31 @@ def _orders_section() -> None:
 def _about_section() -> None:
     section_header("ℹ️", "About")
     st.markdown("""
-    <div style="background:white;border-radius:16px;padding:2rem;
-                border:1px solid #F1F5F9;
+    <div style="background:var(--secondary-background-color);border-radius:16px;padding:2rem;
+                border:1px solid rgba(128, 128, 128, 0.15);
                 box-shadow:0 1px 3px rgba(0,0,0,0.05),0 4px 16px rgba(0,0,0,0.06);">
-        <h3 style="margin:0 0 0.5rem;color:#1E293B;">Pharmacy Management System</h3>
-        <p style="color:#64748B;font-size:0.9rem;margin:0 0 1.5rem;">Made by <strong>Himanshu Sharma</strong></p>
+        <h3 style="margin:0 0 0.5rem;color:var(--text-color);">Pharmacy Management System</h3>
+        <p style="color:var(--text-color);opacity:0.7;font-size:0.9rem;margin:0 0 1.5rem;">Made by <strong>Himanshu Sharma</strong></p>
         <table style="width:100%;border-collapse:collapse;font-size:0.875rem;">
-            <tr style="border-bottom:1px solid #F1F5F9;">
-                <td style="padding:0.6rem 0.5rem;color:#64748B;font-weight:600;width:35%;">Stack</td>
-                <td style="padding:0.6rem 0.5rem;color:#1E293B;">Python · Streamlit · SQLite · Pandas</td>
+            <tr style="border-bottom:1px solid rgba(128, 128, 128, 0.15);">
+                <td style="padding:0.6rem 0.5rem;color:var(--text-color);opacity:0.7;font-weight:600;width:35%;">Stack</td>
+                <td style="padding:0.6rem 0.5rem;color:var(--text-color);">Python · Streamlit · SQLite · Pandas</td>
             </tr>
-            <tr style="border-bottom:1px solid #F1F5F9;">
-                <td style="padding:0.6rem 0.5rem;color:#64748B;font-weight:600;">Security</td>
-                <td style="padding:0.6rem 0.5rem;color:#1E293B;">PBKDF2-HMAC-SHA256 · env-var admin credentials · rate limiting</td>
+            <tr style="border-bottom:1px solid rgba(128, 128, 128, 0.15);">
+                <td style="padding:0.6rem 0.5rem;color:var(--text-color);opacity:0.7;font-weight:600;">Security</td>
+                <td style="padding:0.6rem 0.5rem;color:var(--text-color);">PBKDF2-HMAC-SHA256 · env-var admin credentials · rate limiting</td>
             </tr>
-            <tr style="border-bottom:1px solid #F1F5F9;">
-                <td style="padding:0.6rem 0.5rem;color:#64748B;font-weight:600;">Schema</td>
-                <td style="padding:0.6rem 0.5rem;color:#1E293B;">Normalised OrderItems · Atomic transactions · FK enforcement</td>
+            <tr style="border-bottom:1px solid rgba(128, 128, 128, 0.15);">
+                <td style="padding:0.6rem 0.5rem;color:var(--text-color);opacity:0.7;font-weight:600;">Schema</td>
+                <td style="padding:0.6rem 0.5rem;color:var(--text-color);">Normalised OrderItems · Atomic transactions · FK enforcement</td>
             </tr>
-            <tr style="border-bottom:1px solid #F1F5F9;">
-                <td style="padding:0.6rem 0.5rem;color:#64748B;font-weight:600;">Caching</td>
-                <td style="padding:0.6rem 0.5rem;color:#1E293B;">@st.cache_data (30–120 s TTL) with write-through invalidation</td>
+            <tr style="border-bottom:1px solid rgba(128, 128, 128, 0.15);">
+                <td style="padding:0.6rem 0.5rem;color:var(--text-color);opacity:0.7;font-weight:600;">Caching</td>
+                <td style="padding:0.6rem 0.5rem;color:var(--text-color);">@st.cache_data (30–120 s TTL) with write-through invalidation</td>
             </tr>
             <tr>
-                <td style="padding:0.6rem 0.5rem;color:#64748B;font-weight:600;">Testing</td>
-                <td style="padding:0.6rem 0.5rem;color:#1E293B;">73 pytest tests · GitHub Actions CI on every push</td>
+                <td style="padding:0.6rem 0.5rem;color:var(--text-color);opacity:0.7;font-weight:600;">Testing</td>
+                <td style="padding:0.6rem 0.5rem;color:var(--text-color);">73 pytest tests · GitHub Actions CI on every push</td>
             </tr>
         </table>
     </div>

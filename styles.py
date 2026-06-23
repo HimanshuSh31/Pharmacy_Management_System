@@ -87,29 +87,31 @@ header     { visibility: hidden; }
 
 /* ── Form / Inputs ─────────────────────────────────────────────────────── */
 [data-testid="stForm"] {
-    background: white;
+    background: var(--secondary-background-color) !important;
     border-radius: 20px;
     padding: 2rem !important;
-    border: 1px solid #E2E8F0;
+    border: 1px solid rgba(128, 128, 128, 0.2) !important;
     box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+}
+[data-testid="stTextInput"] div[data-baseweb="input"],
+[data-testid="stNumberInput"] div[data-baseweb="input"],
+[data-testid="stTextArea"] div[data-baseweb="textarea"] {
+    border-radius: 10px !important;
+    border: 1.5px solid rgba(128, 128, 128, 0.2) !important;
+    background: var(--background-color) !important;
+    transition: border-color 0.2s, box-shadow 0.2s !important;
+}
+[data-testid="stTextInput"] div[data-baseweb="input"]:focus-within,
+[data-testid="stNumberInput"] div[data-baseweb="input"]:focus-within,
+[data-testid="stTextArea"] div[data-baseweb="textarea"]:focus-within {
+    border-color: var(--primary-color) !important;
+    box-shadow: 0 0 0 3px rgba(37,99,235,0.12) !important;
 }
 [data-testid="stTextInput"] input,
 [data-testid="stNumberInput"] input,
 [data-testid="stTextArea"] textarea {
-    border-radius: 10px !important;
-    border: 1.5px solid #E2E8F0 !important;
-    padding: 0.6rem 0.9rem !important;
-    font-size: 0.9rem !important;
-    background: #F8FAFC !important;
-    transition: border-color 0.2s, box-shadow 0.2s !important;
-    color: #1E293B !important;
-}
-[data-testid="stTextInput"] input:focus,
-[data-testid="stNumberInput"] input:focus,
-[data-testid="stTextArea"] textarea:focus {
-    border-color: #2563EB !important;
-    box-shadow: 0 0 0 3px rgba(37,99,235,0.12) !important;
-    background: #FFFFFF !important;
+    color: var(--text-color) !important;
+    background: transparent !important;
 }
 [data-testid="stTextInput"] label,
 [data-testid="stNumberInput"] label,
@@ -117,39 +119,42 @@ header     { visibility: hidden; }
 [data-testid="stDateInput"] label {
     font-weight: 600 !important;
     font-size: 0.825rem !important;
-    color: #374151 !important;
+    color: var(--text-color) !important;
     margin-bottom: 0.3rem !important;
+    opacity: 0.9;
 }
 
 /* ── Tabs ──────────────────────────────────────────────────────────────── */
 .stTabs [data-baseweb="tab-list"] {
     gap: 4px;
-    background: #F1F5F9;
+    background: var(--secondary-background-color);
     padding: 5px;
     border-radius: 12px;
-    border: 1px solid #E2E8F0;
+    border: 1px solid rgba(128, 128, 128, 0.2);
 }
 .stTabs [data-baseweb="tab"] {
     border-radius: 9px !important;
     padding: 0.5rem 1.4rem !important;
     font-weight: 600 !important;
     font-size: 0.85rem !important;
-    color: #64748B !important;
+    color: var(--text-color) !important;
+    opacity: 0.6;
     background: transparent !important;
     border: none !important;
     transition: all 0.15s !important;
 }
 .stTabs [aria-selected="true"] {
-    background: white !important;
-    color: #2563EB !important;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1) !important;
+    background: var(--background-color) !important;
+    color: var(--primary-color) !important;
+    opacity: 1 !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15) !important;
 }
 
 /* ── Dataframe ─────────────────────────────────────────────────────────── */
 [data-testid="stDataFrame"] > div {
     border-radius: 14px !important;
     overflow: hidden !important;
-    border: 1px solid #E2E8F0 !important;
+    border: 1px solid rgba(128, 128, 128, 0.2) !important;
     box-shadow: 0 2px 8px rgba(0,0,0,0.04) !important;
 }
 
@@ -157,7 +162,8 @@ header     { visibility: hidden; }
 [data-testid="stSlider"] label {
     font-weight: 600 !important;
     font-size: 0.8rem !important;
-    color: #374151 !important;
+    color: var(--text-color) !important;
+    opacity: 0.9;
 }
 [data-testid="stSlider"] > div > div > div > div {
     background: #2563EB !important;
@@ -170,28 +176,28 @@ header     { visibility: hidden; }
 
 /* ── Expanders ─────────────────────────────────────────────────────────── */
 [data-testid="stExpander"] {
-    border: 1px solid #E2E8F0 !important;
+    border: 1px solid rgba(128, 128, 128, 0.2) !important;
     border-radius: 14px !important;
     overflow: hidden !important;
-    background: white !important;
+    background: var(--secondary-background-color) !important;
 }
 [data-testid="stExpander"] summary {
     font-weight: 600 !important;
-    color: #1E293B !important;
+    color: var(--text-color) !important;
 }
 
 /* ── Divider ───────────────────────────────────────────────────────────── */
 hr {
     border: none !important;
-    border-top: 1px solid #F1F5F9 !important;
+    border-top: 1px solid rgba(128, 128, 128, 0.15) !important;
     margin: 1.5rem 0 !important;
 }
 
 /* ── Scrollbar ─────────────────────────────────────────────────────────── */
 ::-webkit-scrollbar { width: 5px; height: 5px; }
-::-webkit-scrollbar-track { background: #F1F5F9; }
-::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+::-webkit-scrollbar-track { background: var(--background-color); }
+::-webkit-scrollbar-thumb { background: rgba(128, 128, 128, 0.3); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(128, 128, 128, 0.5); }
 """
 
 
@@ -240,10 +246,10 @@ def sidebar_section_label(text: str) -> None:
 
 def page_header(title: str, subtitle: str = "") -> None:
     st.markdown(f"""
-    <div style="padding:0.5rem 0 1.25rem; border-bottom:2px solid #F1F5F9; margin-bottom:1.75rem;">
-        <h1 style="font-size:1.6rem; font-weight:800; color:#1E293B;
+    <div style="padding:0.5rem 0 1.25rem; border-bottom:2px solid rgba(128, 128, 128, 0.15); margin-bottom:1.75rem;">
+        <h1 style="font-size:1.6rem; font-weight:800; color:var(--text-color);
                    margin:0 0 0.2rem; letter-spacing:-0.02em;">{title}</h1>
-        <p style="font-size:0.875rem; color:#64748B; margin:0; font-weight:400;">{subtitle}</p>
+        <p style="font-size:0.875rem; color:var(--text-color); opacity:0.7; margin:0; font-weight:400;">{subtitle}</p>
     </div>
     """, unsafe_allow_html=True)
 
@@ -264,11 +270,11 @@ def metric_cards_row(cards: list) -> None:
         with col:
             st.markdown(f"""
             <div style="
-                background: white;
+                background: var(--secondary-background-color);
                 border-radius: 16px;
                 padding: 1.4rem 1.25rem;
                 box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 4px 16px rgba(0,0,0,0.06);
-                border: 1px solid #F1F5F9;
+                border: 1px solid rgba(128, 128, 128, 0.15);
                 border-top: 4px solid {color};
                 transition: transform 0.2s, box-shadow 0.2s;
             ">
@@ -277,11 +283,11 @@ def metric_cards_row(cards: list) -> None:
                     background:{bg}; display:flex; align-items:center;
                     justify-content:center; font-size:1.4rem; margin-bottom:0.9rem;
                 ">{card['icon']}</div>
-                <div style="font-size:2rem; font-weight:800; color:#1E293B;
+                <div style="font-size:2rem; font-weight:800; color:var(--text-color);
                             line-height:1; margin-bottom:0.3rem;">
                     {card['value']}
                 </div>
-                <div style="font-size:0.78rem; font-weight:600; color:#64748B;
+                <div style="font-size:0.78rem; font-weight:600; color:var(--text-color); opacity:0.7;
                             text-transform:uppercase; letter-spacing:0.06em;">
                     {card['label']}
                 </div>
@@ -296,16 +302,16 @@ def metric_cards_row(cards: list) -> None:
 def alert_danger(title: str, body: str) -> None:
     st.markdown(f"""
     <div style="
-        background:linear-gradient(135deg,#FEF2F2,#FEE2E2);
-        border:1px solid #FECACA; border-left:4px solid #EF4444;
+        background:rgba(239, 68, 68, 0.1);
+        border:1px solid rgba(239, 68, 68, 0.25); border-left:4px solid #EF4444;
         border-radius:14px; padding:1rem 1.25rem;
         margin-bottom:1.25rem; display:flex; gap:0.85rem; align-items:flex-start;
     ">
         <span style="font-size:1.3rem; flex-shrink:0;">🚨</span>
         <div>
-            <div style="font-weight:700; font-size:0.92rem; color:#1E293B;
+            <div style="font-weight:700; font-size:0.92rem; color:var(--text-color);
                         margin-bottom:0.2rem;">{title}</div>
-            <div style="font-size:0.82rem; color:#475569; line-height:1.6;">{body}</div>
+            <div style="font-size:0.82rem; color:var(--text-color); opacity:0.85; line-height:1.6;">{body}</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -314,16 +320,16 @@ def alert_danger(title: str, body: str) -> None:
 def alert_warning(title: str, body: str) -> None:
     st.markdown(f"""
     <div style="
-        background:linear-gradient(135deg,#FFFBEB,#FEF3C7);
-        border:1px solid #FDE68A; border-left:4px solid #F59E0B;
+        background:rgba(245, 158, 11, 0.1);
+        border:1px solid rgba(245, 158, 11, 0.25); border-left:4px solid #F59E0B;
         border-radius:14px; padding:1rem 1.25rem; margin-bottom:1.25rem;
         display:flex; gap:0.85rem; align-items:flex-start;
     ">
         <span style="font-size:1.3rem; flex-shrink:0;">⚠️</span>
         <div>
-            <div style="font-weight:700; font-size:0.92rem; color:#1E293B;
+            <div style="font-weight:700; font-size:0.92rem; color:var(--text-color);
                         margin-bottom:0.2rem;">{title}</div>
-            <div style="font-size:0.82rem; color:#475569; line-height:1.6;">{body}</div>
+            <div style="font-size:0.82rem; color:var(--text-color); opacity:0.85; line-height:1.6;">{body}</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -332,16 +338,16 @@ def alert_warning(title: str, body: str) -> None:
 def alert_success(title: str, body: str) -> None:
     st.markdown(f"""
     <div style="
-        background:linear-gradient(135deg,#F0FDF4,#D1FAE5);
-        border:1px solid #A7F3D0; border-left:4px solid #10B981;
+        background:rgba(16, 185, 129, 0.1);
+        border:1px solid rgba(16, 185, 129, 0.25); border-left:4px solid #10B981;
         border-radius:14px; padding:1rem 1.25rem; margin-bottom:1.25rem;
         display:flex; gap:0.85rem; align-items:flex-start;
     ">
         <span style="font-size:1.3rem; flex-shrink:0;">✅</span>
         <div>
-            <div style="font-weight:700; font-size:0.92rem; color:#1E293B;
+            <div style="font-weight:700; font-size:0.92rem; color:var(--text-color);
                         margin-bottom:0.2rem;">{title}</div>
-            <div style="font-size:0.82rem; color:#475569; line-height:1.6;">{body}</div>
+            <div style="font-size:0.82rem; color:var(--text-color); opacity:0.85; line-height:1.6;">{body}</div>
         </div>
     </div>
     """, unsafe_allow_html=True)
@@ -354,33 +360,33 @@ def alert_success(title: str, body: str) -> None:
 def medicine_card_header(name: str, use: str, price: float,
                          expiry: str, qty: int) -> None:
     stock_ok   = qty > 10
-    stock_bg   = "#D1FAE5" if stock_ok else "#FEE2E2"
-    stock_col  = "#065F46" if stock_ok else "#991B1B"
+    stock_bg   = "rgba(16, 185, 129, 0.15)" if stock_ok else "rgba(239, 68, 68, 0.15)"
+    stock_col  = "#10B981" if stock_ok else "#EF4444"
     stock_icon = "✓"       if stock_ok else "⚠"
     stock_text = f"{qty} in stock" if stock_ok else f"Low stock ({qty})"
 
     st.markdown(f"""
     <div style="
-        background:white; border-radius:16px;
+        background:var(--secondary-background-color); border-radius:16px;
         padding:1.25rem; margin-bottom:0.25rem;
         box-shadow:0 1px 3px rgba(0,0,0,0.05),0 4px 16px rgba(0,0,0,0.06);
-        border:1px solid #F1F5F9;
+        border:1px solid rgba(128, 128, 128, 0.15);
         border-top: 3px solid {'#10B981' if stock_ok else '#EF4444'};
         transition:transform 0.2s,box-shadow 0.2s;
     ">
         <div style="display:flex; align-items:center; gap:0.9rem; margin-bottom:0.9rem;">
             <div style="
                 width:56px; height:56px; border-radius:12px;
-                background:linear-gradient(135deg,#EFF6FF,#DBEAFE);
+                background:rgba(37, 99, 235, 0.08);
                 display:flex; align-items:center; justify-content:center;
                 font-size:1.9rem; flex-shrink:0;
             ">💊</div>
             <div style="flex:1; min-width:0;">
-                <div style="font-size:1rem; font-weight:700; color:#1E293B;
+                <div style="font-size:1rem; font-weight:700; color:var(--text-color);
                             white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
                     {name}
                 </div>
-                <div style="font-size:0.78rem; color:#64748B; line-height:1.4;
+                <div style="font-size:0.78rem; color:var(--text-color); opacity:0.7; line-height:1.4;
                             margin-top:0.15rem; display:-webkit-box;
                             -webkit-line-clamp:2; -webkit-box-orient:vertical;
                             overflow:hidden;">
@@ -407,7 +413,7 @@ def medicine_card_header(name: str, use: str, price: float,
             </span>
         </div>
 
-        <div style="font-size:0.74rem; color:#94A3B8; font-weight:500;">
+        <div style="font-size:0.74rem; color:var(--text-color); opacity:0.5; font-weight:500;">
             ⏳ Expires: {expiry}
         </div>
     </div>
@@ -451,8 +457,8 @@ def section_header(icon: str, title: str) -> None:
     st.markdown(f"""
     <div style="display:flex; align-items:center; gap:0.6rem;
                 margin:1.75rem 0 1rem; padding-bottom:0.75rem;
-                border-bottom:2px solid #F1F5F9;">
+                border-bottom:2px solid rgba(128, 128, 128, 0.15);">
         <span style="font-size:1.15rem;">{icon}</span>
-        <span style="font-size:1rem; font-weight:700; color:#1E293B;">{title}</span>
+        <span style="font-size:1rem; font-weight:700; color:var(--text-color);">{title}</span>
     </div>
     """, unsafe_allow_html=True)
