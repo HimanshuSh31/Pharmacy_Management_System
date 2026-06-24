@@ -118,9 +118,41 @@ def create_all_tables() -> None:
         )
     ''')
 
+    conn.execute('''
+        CREATE TABLE IF NOT EXISTS Contraindications (
+            CI_id          INTEGER PRIMARY KEY AUTOINCREMENT,
+            Category_A     VARCHAR(100) NOT NULL,
+            Category_B     VARCHAR(100) NOT NULL,
+            Severity       VARCHAR(20) NOT NULL DEFAULT 'High',
+            Warning_Message TEXT NOT NULL
+        )
+    ''')
+
     conn.commit()
+    _seed_contraindications(conn)
     _run_migrations(conn)
     logger.info("All tables created/verified.")
+
+
+def _seed_contraindications(conn: sqlite3.Connection) -> None:
+    """Seed the database with standard drug-drug category conflicts if empty."""
+    c = conn.cursor()
+    c.execute("SELECT COUNT(*) FROM Contraindications")
+    if c.fetchone()[0] == 0:
+        seeds = [
+            ("Antibiotic", "Supplement", "High",
+             "Taking mineral supplements (such as Iron, Calcium, or Zinc) at the same time as antibiotics can prevent the body from absorbing the antibiotic. Take them at least 2 hours apart."),
+            ("Antihistamine", "Pain Relief", "Medium",
+             "Combining antihistamines with certain pain relievers may cause increased drowsiness, dizziness, or impaired motor coordination. Avoid driving or operating machinery."),
+            ("Cardiovascular", "Pain Relief", "High",
+             "NSAIDs (like Ibuprofen/Aspirin) can interact with blood pressure medications and increase cardiovascular risk. Please consult your physician before combining them.")
+        ]
+        c.executemany(
+            "INSERT INTO Contraindications (Category_A, Category_B, Severity, Warning_Message) VALUES (?, ?, ?, ?)",
+            seeds
+        )
+        conn.commit()
+        logger.info("Seeded default drug category contraindications.")
 
 
 def _run_migrations(conn: sqlite3.Connection) -> None:
@@ -186,6 +218,18 @@ def _run_migrations(conn: sqlite3.Connection) -> None:
             WHERE C_Email IS NULL AND O_Name LIKE '%@%'
         """)
         logger.info("Migration: added C_Email to Orders and backpopulated values")
+
+    if "O_Status" not in order_cols:
+        conn.execute("ALTER TABLE Orders ADD COLUMN O_Status VARCHAR(30) DEFAULT 'Preparing'")
+        logger.info("Migration: added O_Status to Orders")
+
+    if "O_Prescription_Path" not in order_cols:
+        conn.execute("ALTER TABLE Orders ADD COLUMN O_Prescription_Path TEXT DEFAULT NULL")
+        logger.info("Migration: added O_Prescription_Path to Orders")
+
+    if "O_Rejection_Reason" not in order_cols:
+        conn.execute("ALTER TABLE Orders ADD COLUMN O_Rejection_Reason TEXT DEFAULT NULL")
+        logger.info("Migration: added O_Rejection_Reason to Orders")
 
     conn.commit()
 
@@ -545,13 +589,15 @@ def drug_view_paginated(limit: int = 20, offset: int = 0,
 # ---------------------------------------------------------------------------
 
 def order_place(customer_email: str, order_id: str,
-                items: List[dict]) -> bool:
+                items: List[dict], prescription_path: Optional[str] = None) -> bool:
     """
     Place an order atomically in a single transaction:
       1. Retrieve customer name matching customer_email
-      2. INSERT order header into Orders (including C_Email and O_Name)
-      3. INSERT each item into OrderItems
-      4. Decrement D_Qty for each drug (fails if stock is insufficient)
+      2. Check if any drug in the order requires a prescription
+      3. Set initial order status based on prescription requirement
+      4. INSERT order header into Orders (including C_Email, O_Name, O_Status, O_Prescription_Path)
+      5. INSERT each item into OrderItems
+      6. Decrement D_Qty for each drug (fails if stock is insufficient)
 
     If any step fails the entire transaction is rolled back — no partial data.
 
@@ -562,18 +608,29 @@ def order_place(customer_email: str, order_id: str,
     """
     conn = get_connection()
     try:
-        # Resolve customer name by email
         c = conn.cursor()
+        # Resolve customer name by email
         c.execute("SELECT C_Name FROM Customers WHERE C_Email = ?", (customer_email,))
         row = c.fetchone()
         if not row:
             raise ValueError(f"Customer email '{customer_email}' does not exist.")
         customer_name = row[0]
 
+        # Check if any drug requires a prescription
+        requires_rx = False
+        for item in items:
+            c.execute("SELECT D_Prescription FROM Drugs WHERE D_id = ?", (item["drug_id"],))
+            drug_row = c.fetchone()
+            if drug_row and drug_row[0]:
+                requires_rx = True
+
+        # Initial status: 'Pending Verification' if prescription is required, otherwise 'Preparing'
+        initial_status = "Pending Verification" if requires_rx else "Preparing"
+
         conn.execute(
-            "INSERT INTO Orders (O_id, O_Name, O_Timestamp, C_Email) "
-            "VALUES (?, ?, datetime('now'), ?)",
-            (order_id, customer_name, customer_email)
+            "INSERT INTO Orders (O_id, O_Name, O_Timestamp, C_Email, O_Status, O_Prescription_Path) "
+            "VALUES (?, ?, datetime('now'), ?, ?, ?)",
+            (order_id, customer_name, customer_email, initial_status, prescription_path)
         )
         for item in items:
             conn.execute(
@@ -594,7 +651,7 @@ def order_place(customer_email: str, order_id: str,
                     f"Insufficient stock for drug '{item['drug_id']}'"
                 )
         conn.commit()
-        logger.info("Order placed: %s by %s (%s)", order_id, customer_name, customer_email)
+        logger.info("Order placed: %s by %s (%s) with status %s", order_id, customer_name, customer_email, initial_status)
         return True
     except Exception as exc:
         conn.rollback()
@@ -605,11 +662,12 @@ def order_place(customer_email: str, order_id: str,
 def order_view_data(customer_email: str) -> List[Tuple]:
     """
     Return order rows for a customer email, newest first.
-    Columns: (O_id, O_Timestamp, D_name, quantity, unit_price)
+    Columns: (O_id, O_Timestamp, D_name, quantity, unit_price, O_Status, O_Prescription_Path, O_Rejection_Reason)
     """
     c = get_connection().cursor()
     c.execute('''
-        SELECT o.O_id, o.O_Timestamp, oi.D_name, oi.quantity, oi.unit_price
+        SELECT o.O_id, o.O_Timestamp, oi.D_name, oi.quantity, oi.unit_price,
+               o.O_Status, o.O_Prescription_Path, o.O_Rejection_Reason
           FROM Orders  o
           JOIN OrderItems oi ON o.O_id = oi.O_id
          WHERE o.C_Email = ?
@@ -621,17 +679,67 @@ def order_view_data(customer_email: str) -> List[Tuple]:
 def order_view_all_data() -> List[Tuple]:
     """
     Return all orders with items, newest first.
-    Columns: (O_id, O_Name, O_Timestamp, D_name, quantity, unit_price)
+    Columns: (O_id, O_Name, O_Timestamp, D_name, quantity, unit_price, O_Status, O_Prescription_Path, O_Rejection_Reason)
     """
     c = get_connection().cursor()
     c.execute('''
         SELECT o.O_id, o.O_Name, o.O_Timestamp,
-               oi.D_name, oi.quantity, oi.unit_price
+               oi.D_name, oi.quantity, oi.unit_price,
+               o.O_Status, o.O_Prescription_Path, o.O_Rejection_Reason
           FROM Orders  o
           JOIN OrderItems oi ON o.O_id = oi.O_id
          ORDER BY o.O_Timestamp DESC
     ''')
     return c.fetchall()
+
+
+def order_update_status(order_id: str, status: str, rejection_reason: Optional[str] = None) -> bool:
+    """
+    Update the status and optional rejection reason of an order.
+    Returns True on success, False if no order was found or update failed.
+    """
+    conn = get_connection()
+    try:
+        cur = conn.execute(
+            "UPDATE Orders SET O_Status = ?, O_Rejection_Reason = ? WHERE O_id = ?",
+            (status, rejection_reason, order_id)
+        )
+        if cur.rowcount == 0:
+            logger.warning("order_update_status: no order with id=%s", order_id)
+            return False
+        conn.commit()
+        logger.info("Order status updated: %s ➔ %s", order_id, status)
+        return True
+    except Exception as exc:
+        conn.rollback()
+        logger.error("order_update_status failed: %s", exc)
+        return False
+
+
+def contraindications_check(categories: List[str]) -> List[dict]:
+    """
+    Check a list of drug categories for any mutual contraindications.
+    Returns a list of warning dicts: [{"severity": str, "message": str}]
+    """
+    if len(categories) < 2:
+        return []
+    c = get_connection().cursor()
+    warnings = []
+    for i in range(len(categories)):
+        for j in range(i + 1, len(categories)):
+            cat_a, cat_b = categories[i], categories[j]
+            c.execute(
+                "SELECT Severity, Warning_Message FROM Contraindications "
+                "WHERE (Category_A = ? AND Category_B = ?) OR (Category_A = ? AND Category_B = ?)",
+                (cat_a, cat_b, cat_b, cat_a)
+            )
+            rows = c.fetchall()
+            for r in rows:
+                warnings.append({
+                    "severity": r[0],
+                    "message": r[1]
+                })
+    return warnings
 
 
 def order_delete(order_id: str) -> bool:

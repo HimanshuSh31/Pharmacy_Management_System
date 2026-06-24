@@ -433,55 +433,172 @@ def _customers_section(action: str) -> None:
 # ---------------------------------------------------------------------------
 
 def _orders_section() -> None:
-    section_header("📦", "All Orders")
+    section_header("📦", "Order Management & Fulfillment")
 
     rows = get_all_orders()
     if not rows:
         alert_warning("No orders yet", "Orders appear here once customers place them.")
         return
 
-    df = pd.DataFrame(rows, columns=["Order ID", "Customer", "Timestamp", "Drug", "Qty", "Unit Price (₹)"])
+    df = pd.DataFrame(rows, columns=[
+        "Order ID", "Customer", "Timestamp", "Drug", "Qty", "Unit Price (₹)",
+        "Status", "Prescription Path", "Rejection Reason"
+    ])
     df["Line Total (₹)"] = (df["Qty"] * df["Unit Price (₹)"]).round(2)
 
-    metric_cards_row([
-        {"icon": "📋", "value": df["Order ID"].nunique(),           "label": "Total Orders",  "color": "#2563EB", "bg": "#EFF6FF"},
-        {"icon": "👤", "value": df["Customer"].nunique(),           "label": "Customers",     "color": "#7C3AED", "bg": "#F5F3FF"},
-        {"icon": "₹",  "value": f"{df['Line Total (₹)'].sum():,.0f}", "label": "Revenue",   "color": "#059669", "bg": "#ECFDF5"},
+    tab_active, tab_verification, tab_stepper = st.tabs([
+        "📋  All Orders List", "⚖️  Prescription Verification", "⚙️  Update Order Status"
     ])
-    st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
 
-    search = st.text_input("🔍  Search by customer or order ID")
-    if search:
-        mask = (df["Customer"].str.contains(search, case=False, na=False) |
-                df["Order ID"].str.contains(search, case=False, na=False))
-        df = df[mask]
-        if df.empty:
-            st.info(f"No orders match **'{search}'**.")
+    # ── Tab 1: All Orders List ─────────────────────────────────────────────
+    with tab_active:
+        st.markdown("### All Orders")
+        metric_cards_row([
+            {"icon": "📋", "value": df["Order ID"].nunique(),           "label": "Total Orders",  "color": "#2563EB", "bg": "#EFF6FF"},
+            {"icon": "👤", "value": df["Customer"].nunique(),           "label": "Customers",     "color": "#7C3AED", "bg": "#F5F3FF"},
+            {"icon": "₹",  "value": f"{df['Line Total (₹)'].sum():,.0f}", "label": "Revenue",   "color": "#059669", "bg": "#ECFDF5"},
+        ])
+        st.markdown("<div style='height:1rem'></div>", unsafe_allow_html=True)
 
-    st.dataframe(df, use_container_width=True, hide_index=True)
-    st.download_button("⬇️ Export to CSV", data=df.to_csv(index=False).encode(),
-                       file_name="orders_export.csv", mime="text/csv")
+        search = st.text_input("🔍  Search by customer or order ID", key="order_search")
+        filtered_df = df.copy()
+        if search:
+            mask = (filtered_df["Customer"].str.contains(search, case=False, na=False) |
+                    filtered_df["Order ID"].str.contains(search, case=False, na=False))
+            filtered_df = filtered_df[mask]
+            if filtered_df.empty:
+                st.info(f"No orders match **'{search}'**.")
 
-    with st.expander("📊 Revenue by Customer"):
-        summary = (df.groupby("Customer")["Line Total (₹)"]
-                   .sum().reset_index()
-                   .rename(columns={"Line Total (₹)": "Total Spent (₹)"})
-                   .sort_values("Total Spent (₹)", ascending=False))
-        st.dataframe(summary, use_container_width=True, hide_index=True)
+        st.dataframe(filtered_df, use_container_width=True, hide_index=True)
+        st.download_button("⬇️ Export to CSV", data=filtered_df.to_csv(index=False).encode(),
+                           file_name="orders_export.csv", mime="text/csv")
 
-    st.divider()
-    section_header("🗑️", "Delete Order")
-    with st.form("form_delete_order"):
-        order_id = st.text_input("Order ID", placeholder="e.g. alice#A1B2C3D4")
-        sub      = st.form_submit_button("Delete Order", use_container_width=True)
-    if sub:
-        if not order_id.strip():
-            st.warning("Order ID is required.")
-        elif order_delete(order_id.strip()):
-            invalidate_orders()
-            alert_success("Deleted", f"Order **{order_id}** removed.")
+        with st.expander("📊 Revenue by Customer"):
+            summary = (filtered_df.groupby("Customer")["Line Total (₹)"]
+                       .sum().reset_index()
+                       .rename(columns={"Line Total (₹)": "Total Spent (₹)"})
+                       .sort_values("Total Spent (₹)", ascending=False))
+            st.dataframe(summary, use_container_width=True, hide_index=True)
+
+    # ── Tab 2: Prescription Verification Queue ──────────────────────────────
+    with tab_verification:
+        st.markdown("### ⚖️ Prescription Verification Queue")
+        
+        pending_df = df[df["Status"] == "Pending Verification"]
+        if pending_df.empty:
+            st.success("✨ All prescriptions verified! No orders pending review.")
         else:
-            alert_danger("Not Found", f"No order with ID **{order_id}**.")
+            pending_ids = pending_df["Order ID"].unique()
+            st.write(f"There are **{len(pending_ids)}** order(s) awaiting prescription review:")
+            
+            selected_oid = st.selectbox("Select Order ID to Verify", pending_ids, key="pending_rx_select")
+            if selected_oid:
+                order_items = pending_df[pending_df["Order ID"] == selected_oid]
+                first_row = order_items.iloc[0]
+                customer = first_row["Customer"]
+                timestamp = first_row["Timestamp"]
+                rx_path = first_row["Prescription Path"]
+                total_val = order_items["Line Total (₹)"].sum()
+                
+                st.markdown(f"""
+                <div style="background:var(--secondary-background-color);border:1px solid rgba(128, 128, 128, 0.15);
+                            border-radius:12px;padding:1.25rem;margin-bottom:1rem;">
+                    <strong>Customer:</strong> {customer}<br>
+                    <strong>Timestamp:</strong> {timestamp}<br>
+                    <strong>Total Value:</strong> ₹ {total_val:,.2f}
+                </div>
+                """, unsafe_allow_html=True)
+                
+                st.markdown("**Order Items:**")
+                for _, item in order_items.iterrows():
+                    st.write(f"· {item['Drug']} × {item['Qty']}")
+                
+                st.markdown("**Uploaded Prescription:**")
+                if rx_path and os.path.exists(rx_path):
+                    ext = os.path.splitext(rx_path)[1].lower()
+                    if ext in [".png", ".jpg", ".jpeg", ".webp"]:
+                        st.image(rx_path, caption="Uploaded Doctor Prescription Document", use_container_width=True)
+                    else:
+                        st.markdown(f"📄 [Download/View Prescription File]({rx_path})")
+                else:
+                    st.warning("⚠️ No prescription file found on disk.")
+                
+                st.write("")
+                col_app, col_rej = st.columns(2)
+                
+                with col_app:
+                    if st.button("✅ Approve Order & Prescription", use_container_width=True, key=f"app_{selected_oid}"):
+                        from database import order_update_status
+                        if order_update_status(selected_oid, "Preparing"):
+                            invalidate_orders()
+                            alert_success("Approved", f"Order **{selected_oid}** approved and moved to packaging.")
+                            st.rerun()
+                
+                with col_rej:
+                    with st.expander("❌ Reject Order"):
+                        reason = st.text_input("Reason for rejection", placeholder="e.g. Expired, Incorrect name…", key=f"rej_reason_{selected_oid}")
+                        if st.button("Confirm Rejection", use_container_width=True, key=f"confirm_rej_{selected_oid}"):
+                            if not reason.strip():
+                                st.warning("Please enter a reason for rejection.")
+                            else:
+                                from database import order_update_status
+                                if order_update_status(selected_oid, "Cancelled", reason.strip()):
+                                    invalidate_orders()
+                                    alert_success("Rejected", f"Order **{selected_oid}** rejected and cancelled.")
+                                    st.rerun()
+
+    # ── Tab 3: Update Order Status ──────────────────────────────────────────
+    with tab_stepper:
+        st.markdown("### ⚙️ Operational Status Manager")
+        
+        active_states = ["Preparing", "Dispatched"]
+        manageable_df = df[df["Status"].isin(active_states)]
+        if manageable_df.empty:
+            st.info("No active orders in progress to transition.")
+        else:
+            manageable_ids = manageable_df["Order ID"].unique()
+            selected_manage_oid = st.selectbox("Select Order ID to Update Status", manageable_ids, key="manage_select")
+            if selected_manage_oid:
+                order_items = manageable_df[manageable_df["Order ID"] == selected_manage_oid]
+                first_row = order_items.iloc[0]
+                current_status = first_row["Status"]
+                customer = first_row["Customer"]
+                
+                st.write(f"Order: **{selected_manage_oid}** ({customer})  ·  Current Status: **{current_status}**")
+                
+                if current_status == "Preparing":
+                    next_status = "Dispatched"
+                    btn_label = "🚚 Mark as Dispatched"
+                elif current_status == "Dispatched":
+                    next_status = "Delivered"
+                    btn_label = "✅ Mark as Delivered"
+                else:
+                    next_status = None
+                    btn_label = None
+                
+                if next_status:
+                    if st.button(btn_label, use_container_width=True, key=f"step_{selected_manage_oid}"):
+                        from database import order_update_status
+                        if order_update_status(selected_manage_oid, next_status):
+                            invalidate_orders()
+                            alert_success("Updated", f"Order **{selected_manage_oid}** transitioned to **{next_status}**.")
+                            st.rerun()
+
+    # ── Existing Delete Section at Bottom ──
+    st.divider()
+    section_header("🗑️", "Delete Order Record")
+    with st.form("form_delete_order"):
+        order_id_del = st.text_input("Order ID", placeholder="e.g. alice#A1B2C3D4")
+        sub      = st.form_submit_button("Delete Order Record", use_container_width=True)
+    if sub:
+        if not order_id_del.strip():
+            st.warning("Order ID is required.")
+        elif order_delete(order_id_del.strip()):
+            invalidate_orders()
+            alert_success("Deleted", f"Order **{order_id_del}** removed.")
+            st.rerun()
+        else:
+            alert_danger("Not Found", f"No order with ID **{order_id_del}**.")
 
 
 # ---------------------------------------------------------------------------
