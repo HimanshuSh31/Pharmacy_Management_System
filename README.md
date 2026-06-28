@@ -1,4 +1,4 @@
-# 💊 Pharmacy Management System
+# 💊 Clinipharm IQ
 
 <div align="center">
 

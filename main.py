@@ -68,7 +68,7 @@ SESSION_TIMEOUT_MIN = 60      # auto-logout after 60 minutes idle
 # Page config
 # ---------------------------------------------------------------------------
 st.set_page_config(
-    page_title="PharmaSystem",
+    page_title="Clinipharm IQ",
     page_icon="💊",
     layout="wide",
     initial_sidebar_state="expanded",
@@ -160,8 +160,8 @@ def _auth_page() -> None:
         st.markdown("""
         <div style="text-align:center; padding:2rem 0 1.5rem;">
             <div style="font-size:3.5rem; margin-bottom:0.5rem;">💊</div>
-            <h1 style="font-size:1.85rem; font-weight:800; color:var(--text-color);
-                       margin:0; letter-spacing:-0.02em;">PharmaSystem</h1>
+             <h1 style="font-size:1.85rem; font-weight:800; color:var(--text-color);
+                       margin:0; letter-spacing:-0.02em;">Clinipharm IQ</h1>
             <p style="font-size:0.875rem; color:var(--text-color); opacity:0.7; margin:0.3rem 0 0;">
                 Your trusted pharmacy management platform
             </p>
@@ -283,7 +283,7 @@ def _auth_page() -> None:
 
         st.markdown("""
         <p style="text-align:center; font-size:0.75rem; color:#94A3B8; margin-top:2rem;">
-            Made by Himanshu Sharma &nbsp;·&nbsp; Pharmacy Management System
+            Made by Himanshu Sharma &nbsp;·&nbsp; Clinipharm IQ
         </p>
         """, unsafe_allow_html=True)
 

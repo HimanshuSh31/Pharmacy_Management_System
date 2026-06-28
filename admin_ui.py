@@ -619,7 +619,7 @@ def _about_section() -> None:
     <div style="background:var(--secondary-background-color);border-radius:16px;padding:2rem;
                 border:1px solid rgba(128, 128, 128, 0.15);
                 box-shadow:0 1px 3px rgba(0,0,0,0.05),0 4px 16px rgba(0,0,0,0.06);">
-        <h3 style="margin:0 0 0.5rem;color:var(--text-color);">Pharmacy Management System</h3>
+        <h3 style="margin:0 0 0.5rem;color:var(--text-color);">Clinipharm IQ</h3>
         <p style="color:var(--text-color);opacity:0.7;font-size:0.9rem;margin:0 0 1.5rem;">Made by <strong>Himanshu Sharma</strong></p>
         <table style="width:100%;border-collapse:collapse;font-size:0.875rem;">
             <tr style="border-bottom:1px solid rgba(128, 128, 128, 0.15);">
