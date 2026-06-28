@@ -2,9 +2,9 @@
 
 <div align="center">
 
-[![Live Demo](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://pharmacymanagementsystem.streamlit.app/)
+[![Live Demo](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://clinipharm-iq.streamlit.app/)
 &nbsp;
-[![CI](https://github.com/HimanshuSh31/Pharmacy_Management_System/actions/workflows/ci.yml/badge.svg)](https://github.com/HimanshuSh31/Pharmacy_Management_System/actions)
+[![CI](https://github.com/HimanshuSh31/Clinipharm_IQ/actions/workflows/ci.yml/badge.svg)](https://github.com/HimanshuSh31/Clinipharm_IQ/actions)
 &nbsp;
 ![Python](https://img.shields.io/badge/Python-3.11+-3776AB?logo=python&logoColor=white)
 &nbsp;
@@ -22,7 +22,7 @@
 
 A **full-featured, clinical-grade** pharmacy management web application built with Python and Streamlit, backed by SQLite / PostgreSQL. Features separate Admin and Customer portals with secure authentication, real-time inventory tracking, drug-drug contraindication alerts, prescription enforcers, one-click refills, interactive analytics, and regulatory audit logs.
 
-[**▶ Open Live Demo**](https://pharmacymanagementsystem.streamlit.app/) · [Report Bug](https://github.com/HimanshuSh31/Pharmacy_Management_System/issues) · [Request Feature](https://github.com/HimanshuSh31/Pharmacy_Management_System/issues)
+[**▶ Open Live Demo**](https://clinipharm-iq.streamlit.app/) · [Report Bug](https://github.com/HimanshuSh31/Clinipharm_IQ/issues) · [Request Feature](https://github.com/HimanshuSh31/Clinipharm_IQ/issues)
 
 </div>
 
@@ -30,7 +30,7 @@ A **full-featured, clinical-grade** pharmacy management web application built wi
 
 ## 🚀 Live Demo
 
-> **[https://pharmacymanagementsystem.streamlit.app](https://pharmacymanagementsystem.streamlit.app/)**
+> **[https://clinipharm-iq.streamlit.app](https://clinipharm-iq.streamlit.app/)**
 
 The demo is pre-loaded with **10 realistic drugs** across 6 categories, including deliberately low-stock items and a ready-made customer account so you can explore every feature immediately.
 
@@ -120,7 +120,7 @@ The demo is pre-loaded with **10 realistic drugs** across 6 categories, includin
 ## 📁 Project Structure
 
 ```
-Pharmacy_Management_System/
+Clinipharm_IQ/
 │
 ├── main.py              # Entry point — routing, session state, auth screens
 ├── database.py          # All SQLite CRUD, schema, auto-migrations, bulk import
@@ -176,8 +176,8 @@ Pharmacy_Management_System/
 ### 🐳 Option 2 — Docker *(One command)*
 
 ```bash
-git clone https://github.com/HimanshuSh31/Pharmacy_Management_System.git
-cd Pharmacy_Management_System
+git clone https://github.com/HimanshuSh31/Clinipharm_IQ.git
+cd Clinipharm_IQ
 cp .env.example .env        # Set your credentials
 docker compose up --build
 ```
@@ -186,8 +186,8 @@ Open **http://localhost:8501**
 ### 🐍 Option 3 — Local Python
 
 ```bash
-git clone https://github.com/HimanshuSh31/Pharmacy_Management_System.git
-cd Pharmacy_Management_System
+git clone https://github.com/HimanshuSh31/Clinipharm_IQ.git
+cd Clinipharm_IQ
 
 # Create and activate virtual environment
 python -m venv .venv
@@ -216,7 +216,7 @@ $env:PYTHONPATH="." ; python -m pytest
 | `test_phase3.py` | 8 | Order lifecycle state transitions, category contraindication checks, and refill age validations |
 | `test_phase4.py` | 4 | PostgreSQL query param translation, auto-resolving active user sessions, and atomic audit logging |
 
-CI runs automatically on every push and PR via [GitHub Actions](https://github.com/HimanshuSh31/Pharmacy_Management_System/actions).
+CI runs automatically on every push and PR via [GitHub Actions](https://github.com/HimanshuSh31/Clinipharm_IQ/actions).
 
 ---
 
